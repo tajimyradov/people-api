@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database service
   people-db:
     image: postgres:15
     container_name: people-db
@@ -10,31 +9,31 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: people_db
     ports:
-      - "7432:5432"  # External port for local access to the DB
+      - "7432:5432"
     networks:
       - people_network
     volumes:
       - people_db_data:/var/lib/postgresql/data
 
-  # API service
+
   people-api:
     build:
       context: .
-      dockerfile: Dockerfile  # Custom Dockerfile for the app
+      dockerfile: Dockerfile
     container_name: people-api
     depends_on:
-      - people-db  # Ensure DB is started before the app starts
+      - people-db
     ports:
-      - "8080:8080"  # Expose API on port 8080
+      - "8080:8080"
     networks:
       - people_network
-    command: ["./wait-for-it.sh", "people-db:5432", "--", "./people-api"]  # Wait for DB to be ready before starting API
+    command: ["./wait-for-it.sh", "people-db:5432", "--", "./people-api"]
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@people-db:5432/people_db?sslmode=disable  # Connection URL for DB
+      - DATABASE_URL=postgres://postgres:postgres@people-db:5432/people_db?sslmode=disable
 
 networks:
   people_network:
-    driver: bridge  # Using bridge network driver for communication between containers
+    driver: bridge
 
 volumes:
-  people_db_data:  # Persistent volume to keep DB data across container restarts
+  people_db_data:

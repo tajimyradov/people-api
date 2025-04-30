@@ -9,7 +9,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o people-api cmd/app/main.go
 
-# Production Stage - Distroless
+# Production Stage 
 FROM debian:bullseye-slim
 
 WORKDIR /app
