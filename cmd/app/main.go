@@ -1,6 +1,9 @@
 package main
 
 import (
+	"flag"
+	"go.elastic.co/apm/module/apmzap"
+	"go.uber.org/zap"
 	"log"
 
 	"github.com/joho/godotenv"
@@ -10,8 +13,12 @@ import (
 	"people-api/internal/repository"
 	"people-api/internal/server"
 	"people-api/internal/service"
-	"people-api/pkg/logger"
+	ll "people-api/pkg/logger"
 	"people-api/pkg/storage"
+)
+
+const (
+	Name = "people-api"
 )
 
 // @title People API
@@ -27,19 +34,38 @@ func main() {
 
 	cfg := config.Load()
 
+	var logLevel string
+	flag.StringVar(&logLevel, "ll", "info", "logging level")
+
 	db, err := storage.NewPostgres(cfg)
 	if err != nil {
 		log.Fatal("connect DB: ", err)
 	}
 	defer db.Close()
 
+	logger, err := ll.NewWithSampler(
+		Name,
+		logLevel,
+		1,
+		500,
+		zap.WrapCore((&apmzap.Core{}).WrapCore),
+	)
+	if err != nil {
+		log.Fatal("error while init logger", err.Error())
+	}
+
+	logger.Info(
+		"flags",
+		zap.String("log_level", logLevel),
+	)
+
 	enricher := service.NewEnricher(cfg)
 	repo := repository.NewPersonRepository(db)
-	personService := service.NewPersonService(repo, enricher)
+	personService := service.NewPersonService(repo, enricher, logger)
 	personHandler := handler.NewPersonHandler(personService)
 
 	r := server.NewRouter(personHandler)
 
-	logger.Log.Info("Starting server on port ", cfg.ServerPort)
+	logger.Info("Starting server on port ", zap.String("port", cfg.ServerPort))
 	r.Run(":" + cfg.ServerPort)
 }

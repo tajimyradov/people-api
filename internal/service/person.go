@@ -1,22 +1,29 @@
 package service
 
 import (
+	"go.uber.org/zap"
 	"people-api/internal/domain"
 	"people-api/internal/repository"
 )
 
 type PersonService struct {
 	repo     *repository.PersonRepository
+	logger   *zap.Logger
 	enricher *Enricher
 }
 
-func NewPersonService(repo *repository.PersonRepository, enricher *Enricher) *PersonService {
-	return &PersonService{repo: repo, enricher: enricher}
+func NewPersonService(repo *repository.PersonRepository, enricher *Enricher, logger *zap.Logger) *PersonService {
+	return &PersonService{
+		repo:     repo,
+		enricher: enricher,
+		logger:   logger,
+	}
 }
 
 func (s *PersonService) Create(input *domain.Person) (int, error) {
 	enriched, err := s.enricher.Enrich(input.Name)
 	if err != nil {
+		s.logger.Error("enrich error", zap.Error(err))
 		return 0, err
 	}
 
@@ -28,17 +35,37 @@ func (s *PersonService) Create(input *domain.Person) (int, error) {
 }
 
 func (s *PersonService) List(name, surname, nationality string, page, limit int) ([]domain.Person, error) {
-	return s.repo.List(name, surname, nationality, page, limit)
+	result, err := s.repo.List(name, surname, nationality, page, limit)
+	if err != nil {
+		s.logger.Error("list error", zap.Error(err))
+		return nil, err
+	}
+	return result, nil
 }
 
 func (s *PersonService) GetByID(id string) (*domain.Person, error) {
-	return s.repo.GetByID(id)
+	result, err := s.repo.GetByID(id)
+	if err != nil {
+		s.logger.Error("get by id error", zap.Error(err))
+		return nil, err
+	}
+	return result, nil
 }
 
 func (s *PersonService) Update(id string, person *domain.Person) error {
-	return s.repo.Update(id, person)
+	err := s.repo.Update(id, person)
+	if err != nil {
+		s.logger.Error("update error", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func (s *PersonService) Delete(id string) error {
-	return s.repo.Delete(id)
+	err := s.repo.Delete(id)
+	if err != nil {
+		s.logger.Error("delete error", zap.Error(err))
+		return err
+	}
+	return nil
 }
